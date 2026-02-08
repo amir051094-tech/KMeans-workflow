@@ -1,0 +1,131 @@
+#Required libraries
+
+import warnings
+warnings.filterwarnings('ignore') #ignore warnings
+import pandas as pd
+
+#Read the file 
+
+data=pd.read_csv('ncrb_crime_data.csv')
+print("Below are the columns for this data","\n",data.columns)
+#find the null values 
+
+data.isnull().sum()
+#look for datatypes in all columns 
+
+data.dtypes
+#find duplicate values
+
+data.duplicated().sum()
+#Convert the categorical data to numeric 
+
+from sklearn.preprocessing import LabelEncoder# works on 01,2,3,etc...
+
+data['State'].unique()
+encoder=LabelEncoder()
+data['State']=encoder.fit_transform(data['State'])
+assigned_values=encoder.classes_
+assigned_values
+
+#find which value is assigned to categories
+
+mapping={label:index for index , label in enumerate(assigned_values)}
+mapping
+
+#Verify dtype again 
+
+data.dtypes
+
+#now read the full data 
+data.sort_values('Crime_Rate')
+data.shape
+#visualization -assuming police stations and crime rate for now 
+
+import matplotlib.pyplot as plt 
+x=data['Police_Stations']
+y=data['Crime_Rate']
+
+import numpy as np
+
+sorted=np.argsort(y) # data needs to be sorted when number to number plotting is used
+
+x_sort= x.iloc[sorted]
+y_sort=y.iloc[sorted]
+plt.plot(x_sort,y_sort, color='red',marker='o',label='Crime')
+plt.scatter(x_sort,y_sort, color='red',marker='o')
+plt.title("Crime vs Police Stations")
+plt.xlabel("Police Stations")
+plt.ylabel("Crime Rate")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+x=data
+# Elbow curve 
+from sklearn.cluster import KMeans
+sse={}
+for k in range(1,6):
+    kmeans=KMeans(n_clusters=k,max_iter=1000).fit(x)
+    sse[k]=kmeans.inertia_
+    print (round(kmeans.inertia_,2))# gives distance
+
+#visualize the curve 
+
+plt.plot(list(sse.keys()), list(sse.values()))
+plt.title("Elbow curve")
+plt.xlabel("k cluster")
+plt.ylabel("Inertia")
+plt.show()
+
+#Silhoutee score 
+
+from sklearn.metrics import silhouette_score
+
+silhouette_scores=[]
+for n_cluster in range(2,5):
+    silhouette_scores.append(silhouette_score(x,KMeans(n_clusters=n_cluster).fit_predict(x)))
+
+k=[2,3,4]
+plt.bar(k,silhouette_scores,color='blue')
+plt.title("silhouette score")
+plt.xlabel("k value")
+plt.ylabel("silhouette score")
+plt.show()
+print(silhouette_scores)
+
+best_score=max(silhouette_scores)
+best_k=k[silhouette_scores.index(best_score)]
+
+best_k,best_score
+
+#standardize ,normalize and extract before fitting in kmeans model 
+
+from sklearn.preprocessing import StandardScaler,normalize
+
+scaler=StandardScaler()
+x_scaled=scaler.fit_transform(x)
+
+x_normal=normalize(x_scaled)
+x_normal=pd.DataFrame(x_normal)
+
+from sklearn.decomposition import PCA #feature extraction
+
+pc=PCA(n_components=2)
+
+x_pc=pc.fit_transform(x_normal)
+x_pc=pd.DataFrame(x_pc)
+x_pc.columns=['pc1','pc2']
+x_pc.head(2)
+
+
+#Find the grouping and visualize 
+
+kmeans=KMeans(n_clusters=2)
+
+plt.scatter(x_pc.iloc[:,0],x_pc.iloc[:,1],c=kmeans.fit_predict(x_pc),cmap=plt.cm.rainbow)
+plt.grid(True)
+plt.show()
+
+#find the labels 
+
+kmeans.labels_
